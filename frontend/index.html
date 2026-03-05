@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Feedback Analysis System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,900;1,9..144,300;1,9..144,600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon">◉</div>
+      Feedback <em>Analysis</em> System
+    </div>
+    <div class="topbar-meta">
+      <div class="status-pill"><div class="status-dot" id="apiDot"></div><span id="apiLabel">Idle</span></div>
+      <div class="status-pill"><span id="dataLabel">No data loaded</span></div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <div class="nav-item active" data-page="upload"     onclick="navTo('upload')">    <span class="nav-icon">⬆</span> Upload & Config</div>
+      <div class="nav-item"        data-page="pipeline"   onclick="navTo('pipeline')">  <span class="nav-icon">⚡</span> Run Pipeline</div>
+      <div class="nav-item"        data-page="clusters"   onclick="navTo('clusters')">  <span class="nav-icon">◈</span> Cluster Profiles</div>
+      <div class="nav-item"        data-page="dashboard"  onclick="navTo('dashboard')"> <span class="nav-icon">▦</span> Dashboard</div>
+      <div class="nav-item"        data-page="respondents"onclick="navTo('respondents')"><span class="nav-icon">☰</span> Respondent Table <span class="nav-badge" id="urgentBadge" style="display:none">!</span></div>
+      <div class="nav-item"        data-page="insights"   onclick="navTo('insights')">  <span class="nav-icon">✦</span> Ask AI</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section"><div class="sidebar-label">Pipeline</div></div>
+    <div class="pipeline-steps">
+      <div class="step-row" id="ss-upload">   <div class="step-dot"></div>1. Upload Data</div>
+      <div class="step-row" id="ss-cluster">  <div class="step-dot"></div>2. Clustering</div>
+      <div class="step-row" id="ss-label">    <div class="step-dot"></div>3. Cluster Labels</div>
+      <div class="step-row" id="ss-sentiment"><div class="step-dot"></div>4. Sentiment</div>
+      <div class="step-row" id="ss-themes">   <div class="step-dot"></div>5. Themes</div>
+      <div class="step-row" id="ss-actions">  <div class="step-dot"></div>6. Insights</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+
+    <!-- ══ PAGE: UPLOAD ══════════════════════════════════════════ -->
+    <div class="page visible" id="page-upload">
+      <div class="upload-hero">
+        <h2>Configure Your <em>Analysis</em></h2>
+        <p>Upload your survey CSV and an optional program context document. Configure how the AI should cluster, label, and extract insights from participant responses.</p>
+        <div class="upload-grid">
+          <div class="upload-zone" id="csvZone">
+            <input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)"/>
+            <div class="upload-icon">📊</div>
+            <div class="upload-title">Survey CSV</div>
+            <div class="upload-sub">Likert + free-text columns</div>
+            <div class="upload-filename" id="csvName" style="display:none"></div>
+          </div>
+          <div class="upload-zone" id="pdfZone">
+            <input type="file" id="pdfInput" accept=".pdf,.docx,.txt" onchange="handlePDF(event)"/>
+            <div class="upload-icon">📄</div>
+            <div class="upload-title">Program Context <span style="color:var(--text-3)">(optional)</span></div>
+            <div class="upload-sub">PDF / DOCX program brief</div>
+            <div class="upload-filename" id="pdfName" style="display:none"></div>
+          </div>
+        </div>
+        <div class="config-panel">
+          <h3>Clustering Settings</h3>
+          <div class="toggle-row">
+            <span class="toggle-label">Auto-discover clusters (recommended)</span>
+            <div class="toggle on" id="autoClusterToggle" onclick="toggleAuto()"></div>
+          </div>
+          <div class="field-row" id="kField" style="display:none">
+            <div class="field-label">Number of clusters (k)</div>
+            <input class="field-input" type="number" id="kInput" value="4" min="2" max="10"/>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Predefined themes — one per line (leave blank for auto-discovery)</div>
+            <textarea class="field-input" id="themesInput" placeholder="Facilitator Effectiveness&#10;Module Pacing&#10;Content Relevance&#10;Materials Quality&#10;Follow-up Support"></textarea>
+          </div>
+        </div>
+        <div class="config-panel">
+          <h3>Analysis Scope</h3>
+          <div class="field-row">
+            <div class="field-label">Program / evaluation name</div>
+            <input class="field-input" type="text" id="programName" placeholder="e.g. Leadership Development Series — Q4 2024"/>
+          </div>
+          <div class="toggle-row" style="margin-top:8px">
+            <span class="toggle-label">Flag urgent negative responses</span>
+            <div class="toggle on" id="flagToggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Extract actionable insights</span>
+            <div class="toggle on" id="insightToggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+        <button class="btn-primary" id="runBtn" onclick="startPipeline()" disabled>
+          <span>⚡</span> Run Analysis Pipeline
+        </button>
+        <div style="margin-top:12px;text-align:center;font-size:10px;color:var(--text-3)">
+          Analysis powered by Claude (Anthropic API) · No data stored server-side
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: PIPELINE ════════════════════════════════════════ -->
+    <div class="page" id="page-pipeline">
+      <div class="pipeline-view">
+        <div class="pipeline-header">
+          <div>
+            <div class="page-title">Running <em>Pipeline</em></div>
+            <div class="page-sub">Processing survey data through all analysis stages</div>
+          </div>
+          <div id="pipelineSpinner" style="display:none" class="spinner">⟳</div>
+        </div>
+        <div class="pipeline-card" id="pc-upload">
+          <div class="pc-header"><div class="pc-number">1</div><div class="pc-title">Data Ingestion & Cleaning</div><div class="pc-status" id="pcs-upload">Waiting</div></div>
+          <div class="pc-body">Parsing CSV, separating Likert columns from free-text, normalising scale values.<div class="pc-log" id="pcl-upload"></div></div>
+        </div>
+        <div class="pipeline-card" id="pc-cluster">
+          <div class="pc-header"><div class="pc-number">2</div><div class="pc-title">Embedding & Clustering</div><div class="pc-status" id="pcs-cluster">Waiting</div></div>
+          <div class="pc-body">Sentence embeddings · MinMax normalisation · PCA reduction · K-Means clustering.<div class="pc-log" id="pcl-cluster"></div></div>
+        </div>
+        <div class="pipeline-card" id="pc-label">
+          <div class="pc-header"><div class="pc-number">3</div><div class="pc-title">Cluster Labelling (AI)</div><div class="pc-status" id="pcs-label">Waiting</div></div>
+          <div class="pc-body">Claude characterises each cluster — label, respondent profile, key drivers, distinguishing features.<div class="pc-log" id="pcl-label"></div></div>
+        </div>
+        <div class="pipeline-card" id="pc-sentiment">
+          <div class="pc-header"><div class="pc-number">4</div><div class="pc-title">Sentiment Analysis (AI)</div><div class="pc-status" id="pcs-sentiment">Waiting</div></div>
+          <div class="pc-body">Per-respondent sentiment classification with confidence scores and urgent flagging.<div class="pc-log" id="pcl-sentiment"></div></div>
+        </div>
+        <div class="pipeline-card" id="pc-themes">
+          <div class="pc-header"><div class="pc-number">5</div><div class="pc-title">Thematic Clustering (AI)</div><div class="pc-status" id="pcs-themes">Waiting</div></div>
+          <div class="pc-body">Grouping responses into recurring themes and measuring frequency across clusters.<div class="pc-log" id="pcl-themes"></div></div>
+        </div>
+        <div class="pipeline-card" id="pc-actions">
+          <div class="pc-header"><div class="pc-number">6</div><div class="pc-title">Insight Extraction (AI)</div><div class="pc-status" id="pcs-actions">Waiting</div></div>
+          <div class="pc-body">Surfacing concrete, actionable improvement suggestions for program managers.<div class="pc-log" id="pcl-actions"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: CLUSTER PROFILES ═══════════════════════════════ -->
+    <div class="page" id="page-clusters">
+      <div class="dash-topbar">
+        <div class="page-title">Cluster <em>Profiles</em></div>
+        <div class="dash-actions">
+          <button class="btn-secondary" onclick="exportJSON('clusters')">↓ Export Labels JSON</button>
+        </div>
+      </div>
+      <div id="clusterProfilesGrid" class="cluster-profiles-grid"></div>
+    </div>
+
+    <!-- ══ PAGE: DASHBOARD ═══════════════════════════════════════ -->
+    <div class="page" id="page-dashboard">
+      <div class="dash-topbar">
+        <div class="page-title">Insights <em>Dashboard</em></div>
+        <div class="dash-actions">
+          <button class="btn-secondary" onclick="navTo('insights')">✦ Ask AI</button>
+          <button class="btn-secondary" onclick="exportJSON('all')">↓ Export JSON</button>
+        </div>
+      </div>
+      <div class="kpi-strip" id="kpiStrip"></div>
+      <div class="mid-row">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Cluster Map</div><div class="panel-sub">PCA-reduced · 2D projection</div></div>
+          <canvas id="scatterChart" height="250"></canvas>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Sentiment by Cluster</div><div class="panel-sub">% of respondents</div></div>
+          <canvas id="sentimentChart" height="250"></canvas>
+        </div>
+      </div>
+      <div class="section-label">Cluster Profiles</div>
+      <div class="cluster-row" id="clusterCards"></div>
+      <div id="urgentSection" style="display:none">
+        <div class="section-label">⚠ Urgent Flags</div>
+        <div class="urgent-panel">
+          <div class="urgent-header">🚨 Responses Requiring Immediate Attention</div>
+          <div id="urgentList"></div>
+        </div>
+      </div>
+      <div class="themes-actions">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Theme Frequency</div><div class="panel-sub">Mentions across all responses</div></div>
+          <canvas id="themeChart" height="260"></canvas>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Actionable Suggestions</div><div class="panel-sub">Extracted from free-text</div></div>
+          <div class="action-list" id="actionList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: RESPONDENT TABLE ════════════════════════════════ -->
+    <div class="page" id="page-respondents">
+      <div class="dash-topbar">
+        <div class="page-title">Respondent <em>Table</em></div>
+        <div class="dash-actions">
+          <div class="table-filter-row">
+            <select class="field-input" id="filterCluster" onchange="filterTable()" style="width:160px;padding:7px 10px">
+              <option value="all">All Clusters</option>
+            </select>
+            <select class="field-input" id="filterSentiment" onchange="filterTable()" style="width:160px;padding:7px 10px">
+              <option value="all">All Sentiments</option>
+              <option value="positive">Positive</option>
+              <option value="neutral">Neutral</option>
+              <option value="negative">Negative</option>
+              <option value="mixed">Mixed</option>
+            </select>
+            <select class="field-input" id="filterUrgent" onchange="filterTable()" style="width:160px;padding:7px 10px">
+              <option value="all">All</option>
+              <option value="urgent">Urgent Only</option>
+            </select>
+            <button class="btn-secondary" onclick="exportCSV()">↓ Export CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="respondent-table" id="respondentTable">
+          <thead id="respondentTableHead"></thead>
+          <tbody id="respondentTableBody"></tbody>
+        </table>
+      </div>
+      <!-- Detail drawer -->
+      <div class="detail-drawer" id="detailDrawer" style="display:none">
+        <div class="drawer-header">
+          <div class="drawer-title" id="drawerTitle">Respondent Detail</div>
+          <button class="drawer-close" onclick="closeDrawer()">✕</button>
+        </div>
+        <div class="drawer-body" id="drawerBody"></div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: ASK AI ══════════════════════════════════════════ -->
+    <div class="page" id="page-insights">
+      <div style="margin-bottom:20px">
+        <div class="page-title">Ask <em>AI</em></div>
+        <div class="page-sub" style="margin-top:4px">Ask Claude anything about your survey results</div>
+      </div>
+      <div class="insights-layout">
+        <div class="chat-pane">
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg assistant">
+              <div class="msg-role assistant">Claude</div>
+              <div class="msg-bubble">Hello! I have full context of your survey analysis. Ask me anything — about specific clusters, sentiment patterns, which themes appear across multiple groups, or what actions to prioritise. What would you like to explore?</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chatInput" placeholder="Ask about your results… (Enter to send)" onkeydown="handleChatKey(event)"></textarea>
+            <button class="btn-send" id="sendBtn" onclick="sendChat()">↑</button>
+          </div>
+        </div>
+        <div class="context-pane">
+          <div class="context-card"><h4>Quick Questions</h4><div id="quickQuestions"></div></div>
+          <div class="context-card"><h4>Priority Actions</h4><div id="contextActions"></div></div>
+          <div class="context-card"><h4>Urgent Flags</h4><div id="contextUrgent"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
