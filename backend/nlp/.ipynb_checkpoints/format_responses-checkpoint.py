@@ -85,7 +85,7 @@ def generate_formatted_responses(
             )
 
         data_lines = "\n".join(
-            f"R{str(idx + 1).zfill(3)}, " + ", ".join(_sanitize(t) for t in text_row)
+            f"{idx + 1}, " + ", ".join(_sanitize(t) for t in text_row)
             for idx, text_row in zip(respondent_index, sample_responses)
         )
         formatted_responses = f"Cluster: {cluster_id}\n{'=' * 30}\n{header}\n{data_lines}"
