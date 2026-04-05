@@ -16,9 +16,8 @@
 8. [LLM Backends](#llm-backends)
 9. [Dependencies](#dependencies)
 10. [Known Issues](#known-issues)
-11. [SE Practice Recommendations](#se-practice-recommendations)
-12. [Known Limitations](#known-limitations)
-13. [Contributing](#contributing)
+11. [Known Limitations](#known-limitations)
+12. [Contributing](#contributing)
 
 ---
 
@@ -263,38 +262,6 @@ These are confirmed bugs in the current codebase. Source files are not modified 
 **Effect:** The security/scope rules in the Ask AI system prompt contain the raw text `{program_section}` and `{doc_section}` as literal strings rather than the program name and document content.  
 **Cause:** The `"""..."""` block appended to `sys_prompt` is a regular string, not an f-string. Python only interpolates `{variable}` in f-strings.
 
-### Bug 3 — `flag_urgent` toggle has no effect (Minor)
-
-**File:** `app.py` — Upload & Config page  
-**Effect:** The "Flag urgent negative responses" toggle is visible but its value is never passed to `analyze_sentiment()`. Urgent-flag logic always runs regardless of the toggle state.
-
----
-
-## SE Practice Recommendations
-
-These improve code quality without changing any logic. None are required to run the app.
-
-**1. Replace `print()` with `logging`**  
-22 `print()` calls exist across `auto_clustering.py`, `analysis_modules.py`, `format_responses.py`, and `llm_client.py`. These should be replaced with `logging.getLogger(__name__)` calls so output can be filtered by severity and directed to a log file in production.
-
-**2. Move `import re` out of the for loop**  
-In `analysis_modules.py`, `import re` and `re.compile(...)` appear inside `for cluster_id in range(best_k):`. Both should be at module level — imports inside loops are wasteful and misleading.
-
-**3. Elevate `_sanitize()` to module level**  
-In `format_responses.py`, `_sanitize()` is defined inside `generate_formatted_responses()`. It has no dependency on the enclosing scope. Moving it to module level makes it independently testable.
-
-**4. Verify `__init__.py` files exist**  
-`backend/`, `backend/nlp/`, and `backend/utils/` each need an `__init__.py` (can be empty) for relative imports to work reliably across all Python environments.
-
-**5. Add a test suite**  
-Pure functions that are straightforward to unit test: `separate_likert_from_text()`, `_sanitize()`, `parse_llm_json()`, `hex_to_rgba()`, `cluster_color()`. A `pytest` suite for these would catch regressions without requiring LLM calls.
-
-**6. Fix the `cluster_themes()` NameError**  
-Move `user_prompt` construction outside the `if/else` block so it is defined in both the predefined and auto-discovery paths.
-
-**7. Enforce consistent type annotations**  
-Some functions use `list[str]` (Python 3.9+); others use bare `list`. The `analyze_sentiment()` docstring still references old parameter names. Enforce with `mypy --strict`.
-
 ---
 
 ## Known Limitations
@@ -303,7 +270,6 @@ Some functions use `list[str]` (Python 3.9+); others use bare `list`. The `analy
 - **Multilingual surveys:** The embedding model is optimized for English. For multilingual data, swap to `paraphrase-multilingual-MiniLM-L12-v2` in `auto_clustering.py`.
 - **Very small surveys (< 6 respondents):** Use manual k = 2 to avoid silhouette scoring failures.
 - **Non-Likert numerics:** Numeric columns with few unique values (e.g. binary flags, year fields) may be misdetected as Likert. Review the detected column types after running.
-
 ---
 
 ## Contributing
